@@ -218,3 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# YOLO model weights and generated detections
+*.pt
+output/
+runs/
