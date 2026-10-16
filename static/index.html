@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ByeBike · Path safety</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="header">
+    <a class="brand" href="/" aria-label="ByeBike home"><span class="brand-icon">b<span>↗</span></span><span>ByeBike<small>SHARED PATH SAFETY</small></span></a>
+    <nav class="mode-switch" aria-label="Application mode">
+      <button id="setupMode" class="active"><span>01</span> Path Setup</button>
+      <button id="monitorMode"><span>02</span> Live Monitor</button>
+    </nav>
+    <div class="header-status"><span class="status-dot" id="connectionDot"></span><span id="connectionStatus">Camera offline</span><span class="local-tag" id="hostingLabel">LOCAL APP</span><button id="logoutButton" hidden>Sign out</button></div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <section class="card">
+        <div class="section-title"><h2>Camera source</h2><span class="step">01</span></div>
+        <form id="cameraForm">
+          <label for="cameraLabel">Camera name</label><input id="cameraLabel" value="Shared pathway" maxlength="80" required>
+          <label for="cameraKind">Connection</label>
+          <select id="cameraKind"><option value="browser">Browser camera · this device</option><option value="usb">USB / built-in camera on server</option><option value="stream">IP camera · RTSP / HTTP</option><option value="video">Local video file on server</option><option value="demo">Sample image · try the workflow</option></select>
+          <div id="browserCameraField" hidden><label for="browserDevice">Camera on this device</label><select id="browserDevice"><option value="">Default camera</option></select><button type="button" id="findCameras" class="full">Allow camera &amp; list devices</button><p class="hint">Allow browser camera permission, then choose a device. Keep this tab open and visible while monitoring. Frames are sent to the app server for detection.</p></div>
+          <div id="sourceField"><label for="cameraSource" id="sourceLabel">Camera index</label><input id="cameraSource" value="0" autocomplete="off"><p class="hint" id="sourceHint">Start with 0. Try 1 or 2 for another camera.</p></div>
+          <details id="cameraAdvanced"><summary>Connection options</summary>
+            <label for="cameraBackend">Capture backend</label><select id="cameraBackend"><option value="auto">Automatic</option><option value="dshow">DirectShow · Windows USB</option><option value="msmf">Media Foundation · Windows</option><option value="ffmpeg">FFmpeg · video / network</option></select>
+            <div class="field-row"><div><label for="cameraWidth">Width</label><input id="cameraWidth" type="number" min="240" max="3840" value="1280"></div><div><label for="cameraHeight">Height</label><input id="cameraHeight" type="number" min="240" max="3840" value="720"></div></div>
+            <p class="hint">Resolution is requested for USB cameras. Streams use their own resolution.</p>
+          </details>
+          <div class="button-row"><button class="primary" id="connectButton" type="submit">Connect camera</button><button id="disconnectButton" type="button" title="Disconnect camera" disabled>Disconnect</button></div>
+        </form>
+      </section>
+
+      <section class="card" id="drawingPanel">
+        <div class="section-title"><h2>Path areas</h2><span class="step">02</span></div>
+        <p class="hint">Outline the visible surface of each path. Areas are saved separately for each camera.</p>
+        <div class="area-types" role="group" aria-label="Path type"><button id="pedestrianType" class="selected pedestrian"><span class="swatch"></span>Pedestrian</button><button id="cyclingType" class="cycling"><span class="swatch"></span>Cycling</button></div>
+        <div class="tools" role="group" aria-label="Drawing tool"><button id="polygonTool" class="selected" title="Click to place corner points">◇ Polygon</button><button id="freehandTool" title="Drag to trace a curved path">⌁ Trace</button><button id="editTool" title="Select a shape and drag its points">↖ Edit</button></div>
+        <p id="toolHint" class="hint tool-hint">Click corners. Click the first point or press Enter to close.</p>
+        <div class="button-row"><button id="finishShape">Finish shape</button><button id="undoButton">Undo</button><button id="deleteShape">Delete</button></div>
+        <div id="zoneList" class="zone-list"><p class="hint">No areas drawn yet.</p></div>
+        <div class="button-row"><button class="primary" id="savePaths">Save paths</button><button id="revertPaths" title="Discard unsaved area changes">Revert</button></div>
+        <p class="hint" id="saveStatus">Draw at least one pedestrian area to monitor.</p>
+      </section>
+
+      <section class="card rules-card">
+        <div class="section-title"><h2>Detection rules</h2><span class="step">03</span></div>
+        <fieldset id="rulesFields">
+          <label class="range-label" for="overlap">Bicycle contact overlap <output id="overlapValue">25%</output></label>
+          <input id="overlap" type="range" min="5" max="100" step="5" value="25">
+          <p class="hint">Share of the bike’s lower edge inside a pedestrian area. Lower = earlier alerts.</p>
+          <label class="range-label" for="dwell">Confirm for <output id="dwellValue">0.7 s</output></label>
+          <input id="dwell" type="range" min="0.1" max="5" step="0.1" value="0.7">
+          <details><summary>More detection settings</summary>
+            <label class="range-label" for="confidence">YOLO confidence <output id="confidenceValue">40%</output></label><input id="confidence" type="range" min="10" max="95" step="5" value="40">
+            <label for="rearm">Time outside before another alert (s)</label><input id="rearm" type="number" min="1" max="30" value="3" step="0.5">
+            <label for="model">Detector</label><select id="model"><option value="yolo11n.pt">YOLO11 nano · faster</option><option value="yolo11s.pt">YOLO11 small · larger download</option></select>
+          </details>
+          <button class="full" id="saveRules">Apply detection rules</button>
+        </fieldset>
+        <p class="hint">25% / 0.7 s is a starting point. Tune using footage from this camera. Pause monitoring to edit.</p>
+      </section>
+
+      <section class="card cloud-card">
+        <details id="cloudDetails"><summary>Google Cloud Storage <span id="cloudBadge" class="tiny-badge">OFF</span></summary>
+          <p class="hint" id="cloudIntro">Save locally first, then upload new cyclist crops. Configure here or in <code>.env</code>.</p>
+          <label class="check-label"><input type="checkbox" id="cloudEnabled"> Upload new evidence crops</label>
+          <label for="cloudProject">Project ID</label><input id="cloudProject" placeholder="your-project-id" autocomplete="off">
+          <label for="cloudBucket">Bucket name</label><input id="cloudBucket" placeholder="your-byebike-evidence" autocomplete="off">
+          <label for="cloudPrefix">Folder prefix</label><input id="cloudPrefix" value="byebike" autocomplete="off">
+          <label for="cloudCredentials">Credentials JSON path (optional)</label><input id="cloudCredentials" placeholder="C:/keys/service-account.json" autocomplete="off">
+          <p class="hint">Leave blank for Google Application Default Credentials. Setup guide: <code>docs/GCP_SETUP.md</code>.</p>
+          <div class="button-row"><button id="saveCloud" class="primary">Save cloud settings</button><button id="retryCloud">Retry</button></div>
+          <p id="cloudStatus" class="hint" aria-live="polite">Local saving is always enabled.</p>
+        </details>
+      </section>
+    </aside>
+
+    <section class="workspace">
+      <div class="workspace-heading"><div><p class="eyebrow" id="modeEyebrow">DEFINE THE SPACE</p><h1 id="modeTitle">A safer path starts here.</h1><p id="modeDescription">Connect your camera, then outline the cycling and pedestrian areas.</p></div><button id="refreshFrame" class="refresh-button" disabled>↻ Refresh still</button></div>
+
+      <div class="stats" id="monitorStats" hidden><div><span>Cyclists in view</span><strong id="cyclistCount">0</strong></div><div><span>Encroaching now</span><strong id="encroachingCount">0</strong></div><div><span>Evidence saved</span><strong id="evidenceCount">0</strong></div><div><span>Detection rate</span><strong id="detectionFps">—</strong></div></div>
+
+      <div class="viewer-card">
+        <div class="viewer-toolbar"><span><span class="status-dot" id="viewDot"></span><strong id="viewName">Camera preview</strong></span><div><span id="frameDimensions"></span><span class="view-badge" id="viewBadge">NO SIGNAL</span></div></div>
+        <div class="viewer" id="viewer">
+          <div class="empty-state" id="emptyState"><div class="camera-symbol"><svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><rect x="8" y="18" width="48" height="34" rx="8" stroke="currentColor" stroke-width="2"/><path d="M20 18l4-7h16l4 7" stroke="currentColor" stroke-width="2"/><circle cx="32" cy="35" r="10" stroke="currentColor" stroke-width="2"/></svg></div><h2>Your pathway, in view.</h2><p>Connect a camera from the panel on the left.<br>Just exploring? Start with the sample image.</p><button id="tryDemo">Try sample image <span>↗</span></button></div>
+          <canvas id="pathCanvas" hidden aria-label="Path drawing canvas"></canvas>
+          <img id="liveImage" alt="Live camera with path areas and cyclist alerts" hidden>
+          <div class="viewer-alert" id="viewerAlert" hidden><span>!</span> Cyclist in pedestrian area · evidence captured</div>
+        </div>
+        <div class="viewer-footer"><span id="viewerHelp">Camera frames stay on this computer. Optional cloud upload saves evidence crops.</span><div class="legend"><span><i class="pedestrian-color"></i>Pedestrian</span><span><i class="cycling-color"></i>Cycling</span></div></div>
+      </div>
+
+      <div class="status-message" id="statusMessage" role="status">Ready when you are. Connect a camera or try the sample image.</div>
+      <div class="setup-note" id="setupNote"><span class="note-icon">↖</span><div><strong>Draw once. Monitor continuously.</strong><p>Use Polygon for straight edges or Trace for curves. Switch to Edit to drag points. Refresh the still if needed; redraw paths whenever the camera moves.</p></div><button id="startMonitor" class="primary">Start monitoring →</button></div>
+
+      <section class="evidence-section">
+        <div class="section-heading"><div><p class="eyebrow" id="storageLabel">CAPTURED LOCALLY · CLOUD OPTIONAL</p><h2>Evidence log <span id="eventTotal">0</span></h2></div><span class="folder-label" id="storageFolder">data/evidence/</span></div>
+        <div id="evidenceEmpty" class="evidence-empty"><span>↳</span><div><strong>No encroachments captured yet</strong><p>Confirmed events appear here with a cyclist + bicycle crop, scene snapshot, and timestamp.</p></div></div>
+        <div id="evidenceGrid" class="evidence-grid"></div>
+        <p class="limitation">Prototype detection pairs people with bicycles. A person walking a bike may also be flagged; review saved evidence before acting.</p>
+      </section>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status" hidden></div>
+  <dialog id="evidenceDialog"><div class="dialog-header"><div><p class="eyebrow">ENCROACHMENT EVIDENCE</p><h2 id="dialogTitle">Captured cyclist</h2></div><button id="closeDialog" aria-label="Close evidence">✕</button></div><img id="dialogImage" alt="Evidence crop containing cyclist and bicycle"><p id="dialogDescription"></p><div class="button-row"><a id="dialogCrop" class="button-link" target="_blank" rel="noopener">Open crop ↗</a><a id="dialogFrame" class="button-link" target="_blank" rel="noopener">Full scene ↗</a><a id="dialogMetadata" class="button-link" target="_blank" rel="noopener">Metadata ↗</a></div><p id="dialogCloud" class="hint"></p></dialog>
+</body>
+</html>

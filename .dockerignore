@@ -1,0 +1,12 @@
+**
+!Dockerfile
+!requirements.txt
+!requirements-cloud.txt
+!app.py
+!example_image.jpg
+!byebike/
+!byebike/*.py
+!static/
+!static/*.html
+!static/*.css
+!static/*.js

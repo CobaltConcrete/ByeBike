@@ -1,0 +1,15 @@
+# Allowlist: never upload .env, credentials, local evidence or virtual environments.
+**
+!Dockerfile
+!.dockerignore
+!cloudbuild.yaml
+!requirements.txt
+!requirements-cloud.txt
+!app.py
+!example_image.jpg
+!byebike/
+!byebike/*.py
+!static/
+!static/*.html
+!static/*.css
+!static/*.js

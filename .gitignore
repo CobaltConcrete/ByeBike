@@ -151,6 +151,9 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+!.env.example
+credentials/
 .envrc
 .venv
 env/
@@ -223,3 +226,9 @@ __marimo__/
 *.pt
 output/
 runs/
+data/
+tmp/
+byebike-app.tar.gz
+
+# Local installers and compiled Windows executables
+*.exe
